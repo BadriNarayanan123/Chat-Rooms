@@ -1163,3 +1163,21 @@ a {
   color: var(--color-main);
   font-weight: 1.4rem;
 }
+
+.system-message {
+  color: gray;
+  font-style: italic;
+  text-align: center;
+  margin: 20px 0;
+}
+
+#load-more {
+  padding: 0.5rem 1.5rem;
+  background: var(--color-dark-light);
+  color: var(--color-light);
+  display: inline-block;
+  font-size: 1.4rem;
+  border-radius: 1.5rem;
+  margin: 1rem 0;
+}
+

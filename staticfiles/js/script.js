@@ -90,8 +90,16 @@ document.addEventListener("DOMContentLoaded", () => {
   chatSocket.onmessage = function(e) {
     const data = JSON.parse(e.data);
     if(data.event == "join") 
-          data.participants.forEach(user => addParticipant(user));
-    else removeParticipant(data.username);
+    {
+        addParticipant(data.username);
+        showSystemMessage(`@${data.username} joined the room`);
+    }
+    else if(data.event == "leave") 
+    {
+      removeParticipant(data.username);
+      showSystemMessage(`@${data.username} left the room`);
+    }
+
 
     if (data.event === "typing") {
   if (data.username !== username) {   // only show others
@@ -168,6 +176,20 @@ function removeParticipant(username) {
   const userEl = participantsList.querySelector(`[data-username="${username}"]`);
   if (userEl) userEl.remove();
 }
+function showSystemMessage(text) {
+  const threads = document.querySelector(".threads");
+  const systemMsg = document.createElement("div");
+  systemMsg.classList.add("system-message");
+  systemMsg.innerText = text;
+
+  threads.appendChild(systemMsg);
+
+  // Remove after 5 seconds
+  setTimeout(() => {
+    systemMsg.remove();
+  }, 5000);
+}
+
 });
 
 

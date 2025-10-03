@@ -74,8 +74,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const username = configEl.dataset.username;
 
   const chatSocket = new WebSocket(
-    'ws://' + window.location.host + '/ws/room/' + roomName + '/'
-  );
+  (window.location.protocol === "https:" ? "wss://" : "ws://") +
+  window.location.hostname +
+  ":8000/ws/room/" + roomName + '/'
+);
 
   const messageInput = document.querySelector('#chat-message-input');
   const typingIndicator = document.querySelector('#typing-indicator');
@@ -89,16 +91,47 @@ document.addEventListener("DOMContentLoaded", () => {
   // Receiving messages
   chatSocket.onmessage = function(e) {
     const data = JSON.parse(e.data);
+    if (data.event === "cooldown") 
+    {
+      messageInput.disabled = true;
+      typingIndicator.innerText = `Please wait ${data.seconds} seconds before sending again...`;
+      setTimeout(() => {
+        messageInput.disabled = false;
+        typingIndicator.innerText = "";
+        }, data.seconds * 1000);
+    }
+
     if(data.event == "join") 
-          data.participants.forEach(user => addParticipant(user));
-    else removeParticipant(data.username);
+    {
+        addParticipant(data.username);
+        if(username != data.username)
+          showSystemMessage(`@${data.username} joined the room`);
+        data.username.forEach(u => {
+        const badge = document.querySelector(`.status-badge[data-username="${u}"]`);
+        if(badge) 
+        {
+          badge.textContent = "🟢";
+        }
+      });
+    }
+    else if(data.event == "leave") 
+    {
+      removeParticipant(data.username);
+      showSystemMessage(`@${data.username} left the room`);
+      const badge = document.querySelector(`.status-badge[data-username="${data.username}"]`);
+      if(badge) 
+      {
+        badge.textContent = "⚪";
+      }
+    }
+
 
     if (data.event === "typing") {
-  if (data.username !== username) {   // only show others
-    if (data.typing) {
-      typingIndicator.innerText = `${data.username} is typing...`;
-    } else {
-      typingIndicator.innerText = "";   // clear when false
+      if (data.username !== username) {   // only show others
+          if (data.typing) {
+            typingIndicator.innerText = `${data.username} is typing...`;
+          } else {
+                typingIndicator.innerText = "";   // clear when false
     }
   }
 }
@@ -168,7 +201,93 @@ function removeParticipant(username) {
   const userEl = participantsList.querySelector(`[data-username="${username}"]`);
   if (userEl) userEl.remove();
 }
+function showSystemMessage(text) {
+  const threads = document.querySelector(".threads");
+  const systemMsg = document.createElement("div");
+  systemMsg.classList.add("system-message");
+  systemMsg.innerText = text;
+
+  threads.appendChild(systemMsg);
+
+  // Remove after 5 seconds
+  setTimeout(() => {
+    systemMsg.remove();
+  }, 5000);
+}
+
 });
+
+//Load more messages button logic 
+let currentPage = 1;
+const messagesList = document.querySelector(".threads");
+const loadMoreBtn = document.querySelector("#load-more");
+const roomId = document.getElementById("room-config").dataset.roomId;
+const jwtEl = document.getElementById("jwt-config");
+const accessToken = jwtEl.dataset.access;
+const refreshToken = jwtEl.dataset.refresh;
+console.log("Access Token:", accessToken);
+
+function fetchMessages(page) {
+  console.log(roomId);
+  fetch(`/room/${roomId}/messages/?page=${page}`,{
+    method: "GET",
+  headers: {
+    "Authorization": "Bearer " + accessToken,
+    "Content-Type": "application/json"
+  }
+  })
+    .then(response => response.json())
+    .then(data => {
+      data.messages.reverse().forEach(msg => {
+        const threadDiv = document.createElement("div");
+        threadDiv.classList.add("thread");
+
+        threadDiv.innerHTML = `
+          <div class="thread__top">
+            <div class="thread__author">
+              <a href="/profile/${msg.user_id}" class="thread__authorInfo">
+                <div class="avatar avatar--small">
+                  <img src="${msg.avatar_url}" />
+                </div>
+                <span>@${msg.username}</span>
+              </a>
+              <span class="thread__date">${msg.created}</span>
+            </div>
+            ${msg.can_delete ? `
+              <a href="/delete-message/${msg.id}">
+                <div class="thread__delete">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+                    <title>remove</title>
+                    <path d="M27.314 6.019l-1.333-1.333-9.98 9.981-9.981-9.981-1.333 1.333 
+                    9.981 9.981-9.981 9.98 1.333 1.333 9.981-9.98 
+                    9.98 9.98 1.333-1.333-9.98-9.98 9.98-9.981z">
+                    </path>
+                  </svg>
+                </div>
+              </a>
+            ` : ""}
+          </div>
+          <div class="thread__details">
+            ${msg.body}
+          </div>
+        `;
+
+        messagesList.prepend(threadDiv);
+      });
+
+      if (!data.has_next) {
+        loadMoreBtn.style.display = "none";
+      }
+    });
+}
+
+
+// On button click → load next page
+loadMoreBtn.addEventListener("click", () => {
+  currentPage++;
+  fetchMessages(currentPage);
+});
+
 
 
 

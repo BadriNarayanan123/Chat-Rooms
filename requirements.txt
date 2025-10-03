@@ -14,6 +14,7 @@ daphne==4.2.1
 Django==5.2.6
 django-cors-headers==3.8.0
 djangorestframework==3.16.1
+djangorestframework_simplejwt==5.5.1
 h11==0.16.0
 hyperlink==21.0.0
 idna==3.10
@@ -24,6 +25,7 @@ pyasn1==0.6.1
 pyasn1_modules==0.4.2
 pycodestyle==2.7.0
 pycparser==2.23
+PyJWT==2.10.1
 pyOpenSSL==25.1.0
 pytz==2021.1
 redis==6.4.0

@@ -6,7 +6,11 @@ from django.db.models import Q
 from django.contrib.auth import authenticate, login, logout
 from .models import Room, Topic, Message, User
 from .forms import RoomForm, UserForm, MyUserCreationForm
-
+from django.http import JsonResponse
+from django.core.paginator import Paginator
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework_simplejwt.tokens import RefreshToken
 # Create your views here.
 
 # rooms = [
@@ -85,8 +89,12 @@ def home(request):
 
 def room(request, pk):
     room = Room.objects.get(id=pk)
-    room_messages = room.message_set.all()
+    #room_messages = room.message_set.all()
     participants = room.participants.all()
+    room_messages = room.message_set.order_by('-created')[:5]
+    room_messages = reversed(room_messages)  # reverse to show oldest first
+    tokens = get_tokens_for_user(request.user)
+    
 
     # if request.method == 'POST':
     #     message = Message.objects.create(
@@ -97,8 +105,8 @@ def room(request, pk):
     #     room.participants.add(request.user)
     #     return redirect('room', pk=room.id)
 
-    context = {'room': room, 'room_messages': room_messages,
-               'participants': participants}
+    context = {'room': room, 'room_messages': room_messages,'participants': participants,
+               'jwt_access': tokens['access'],'jwt_refresh': tokens['refresh']}
     return render(request, 'base/room.html', context)
 
 
@@ -107,8 +115,7 @@ def userProfile(request, pk):
     rooms = user.room_set.all()
     room_messages = user.message_set.all()
     topics = Topic.objects.all()
-    context = {'user': user, 'rooms': rooms,
-               'room_messages': room_messages, 'topics': topics}
+    context = {'user': user, 'rooms': rooms,'room_messages': room_messages, 'topics': topics}
     return render(request, 'base/profile.html', context)
 
 
@@ -202,3 +209,39 @@ def topicsPage(request):
 def activityPage(request):
     room_messages = Message.objects.all()
     return render(request, 'base/activity.html', {'room_messages': room_messages})
+
+
+def get_tokens_for_user(user):
+    refresh = RefreshToken.for_user(user)
+    return {
+        'refresh': str(refresh),
+        'access': str(refresh.access_token),
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def load_messages(request, room_id):
+    page_number = request.GET.get("page", 1)  # default to page 1
+    room = Room.objects.get(id=room_id)
+
+    messages = Message.objects.filter(room=room).order_by("-created")
+    paginator = Paginator(messages, 2)  # 20 messages per page
+    page_obj = paginator.get_page(page_number)
+
+    data = []
+    for msg in page_obj:
+        data.append({
+            "id": msg.id,
+            "username": msg.user.username,
+            "user_id": msg.user.id,
+            "avatar_url": msg.user.avatar.url if msg.user.avatar else "/static/images/default.png",
+            "body": msg.body,
+            "created": msg.created.strftime("%b %d, %Y %H:%M"),
+            "can_delete": (msg.user == request.user)
+        })
+
+    return JsonResponse({
+        "messages": data,
+        "has_next": page_obj.has_next()
+    })
