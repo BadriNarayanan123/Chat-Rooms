@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DOCKER_IMAGE: badrinarayanan2592@gmail.com/studybud:latest
+      DOCKER_IMAGE: badrinarayanan2592/studybud:latest
 
     steps:
       # Checkout repo
