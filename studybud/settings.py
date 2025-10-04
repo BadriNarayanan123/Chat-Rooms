@@ -29,6 +29,7 @@ ALLOWED_HOSTS = [
     "localhost",
     "127.0.0.1",
     "chat-rooms-sxho.onrender.com",  # your Render domain
+    "13.201.99.108",
 ]
 
 
