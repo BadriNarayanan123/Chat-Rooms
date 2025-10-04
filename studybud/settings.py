@@ -101,7 +101,7 @@ WSGI_APPLICATION = 'studybud.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'studybud-db',       # DB name 
+        'NAME': 'studybud',       # DB name 
         'USER': 'studybud',             # master DB username
         'PASSWORD': 'badripython123',  # master DB password
         'HOST': 'studybud-db.cpmi8egmgkqq.ap-south-1.rds.amazonaws.com',  # RDS endpoint
